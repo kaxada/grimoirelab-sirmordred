@@ -36,21 +36,22 @@ rows = cursor.fetchall()
 for r in rows:
     uuid = str(r[0])
     # group by start,end date for uuids with more than 1 affilation
-    cursor.execute("SELECT COUNT(*), start, end FROM enrollments WHERE uuid = '%s' GROUP BY start,end" % uuid)
+    cursor.execute(
+        f"SELECT COUNT(*), start, end FROM enrollments WHERE uuid = '{uuid}' GROUP BY start,end"
+    )
     data = cursor.fetchone()
     total = data[0]
     start = data[1]
     end = data[2]
-    if data[0] > 1:
+    if total > 1:
         # conflict identified, gets organization names and uuid to compose the log
-        cursor.execute("SELECT organizations.name FROM enrollments, organizations WHERE start = '%s' "
-                       " AND end = '%s' AND uuid = '%s' AND organization_id = organizations.id" % (start, end, uuid))
+        cursor.execute(
+            f"SELECT organizations.name FROM enrollments, organizations WHERE start = '{start}'  AND end = '{end}' AND uuid = '{uuid}' AND organization_id = organizations.id"
+        )
         data = cursor.fetchall()
-        orgs = []
-        for o in data:
-            orgs.append(o[0])
+        orgs = [o[0] for o in data]
         orgs.sort()
-        print("%s affiliation conflict with orgs %s" % (uuid, str(orgs)))
+        print(f"{uuid} affiliation conflict with orgs {orgs}")
 
 # disconnect from server
 db.close()

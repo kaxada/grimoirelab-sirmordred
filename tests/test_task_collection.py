@@ -108,9 +108,9 @@ class TestTaskRawDataCollection(unittest.TestCase):
 
         # Check that the collection went well
         es_collection = cfg['es_collection']['url']
-        raw_index = es_collection + "/" + cfg[GIT_BACKEND_SECTION]['raw_index']
+        raw_index = f"{es_collection}/" + cfg[GIT_BACKEND_SECTION]['raw_index']
 
-        r = requests.get(raw_index + "/_search?size=0", verify=False)
+        r = requests.get(f"{raw_index}/_search?size=0", verify=False)
         raw_items = r.json()['hits']['total']
         self.assertEqual(raw_items, 3603)
 
@@ -127,9 +127,9 @@ class TestTaskRawDataCollection(unittest.TestCase):
 
         # Check that the fitler --filter-no-collection works
         es_collection = cfg['es_collection']['url']
-        raw_index = es_collection + "/" + cfg[GIT_BACKEND_SECTION]['raw_index']
+        raw_index = f"{es_collection}/" + cfg[GIT_BACKEND_SECTION]['raw_index']
 
-        r = requests.get(raw_index + "/_search?size=0", verify=False)
+        r = requests.get(f"{raw_index}/_search?size=0", verify=False)
         raw_items = r.json()['hits']['total']
         self.assertEqual(raw_items, 40)
 

@@ -131,10 +131,14 @@ class TestTaskProjects(unittest.TestCase):
         self.assertEqual(task.execute(), None)
 
         config.conf.keys()
-        backend_sections = list(set([sect for sect in config.conf.keys()
-                                     for backend_section in Config.get_backend_sections()
-                                     if sect and sect.startswith(backend_section)]))
-        backend_sections.sort()
+        backend_sections = sorted(
+            {
+                sect
+                for sect in config.conf.keys()
+                for backend_section in Config.get_backend_sections()
+                if sect and sect.startswith(backend_section)
+            }
+        )
         backend = backend_sections[0]
 
         repos = task.get_repos_by_backend_section(backend)

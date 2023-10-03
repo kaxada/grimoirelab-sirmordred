@@ -64,30 +64,27 @@ class Config():
         self.__read_conf_files()
 
     @classmethod
-    def backend_section_params(self):
-        # Params that must exists in all backends
-        params = {
+    def backend_section_params(cls):
+        return {
             "enriched_index": {
                 "optional": False,
                 "default": None,
                 "type": str,
-                "description": "Index name in which to store the enriched items"
+                "description": "Index name in which to store the enriched items",
             },
             "raw_index": {
                 "optional": False,
                 "default": None,
                 "type": str,
-                "description": "Index name in which to store the raw items"
+                "description": "Index name in which to store the raw items",
             },
             "studies": {
                 "optional": True,
                 "default": [],
                 "type": list,
-                "description": "List of studies to be executed"
-            }
+                "description": "List of studies to be executed",
+            },
         }
-
-        return params
 
     @classmethod
     def general_params(cls):
@@ -482,28 +479,25 @@ class Config():
 
         parser = configparser.ConfigParser()
 
-        sections = list(general_sections.keys())
-        sections.sort()
+        sections = sorted(general_sections.keys())
         for section_name in sections:
             parser.add_section(section_name)
             section = general_sections[section_name]
-            params = list(section.keys())
-            params.sort()
+            params = sorted(section.keys())
             for param in params:
                 parser.set(section_name, param, str(section[param]["default"]))
 
         sections = backend_sections
         sections.sort()
         backend_params = cls.backend_section_params()
-        params = list(cls.backend_section_params().keys())
-        params.sort()
+        params = sorted(cls.backend_section_params().keys())
         for section_name in sections:
             parser.add_section(section_name)
             for param in params:
                 if param == "enriched_index":
                     val = section_name
                 elif param == "raw_index":
-                    val = section_name + "-raw"
+                    val = f"{section_name}-raw"
                 else:
                     val = backend_params[param]['default']
                 parser.set(section_name, param, str(val))
@@ -547,9 +541,7 @@ class Config():
         connectors = get_connectors()
         for _, backends in connectors.items():
             enrich_backend = backends[2]()
-            for study in enrich_backend.studies:
-                studies.append(study.__name__)
-
+            studies.extend(study.__name__ for study in enrich_backend.studies)
         return tuple(set(studies))
 
     def get_active_data_sources(self):
@@ -564,14 +556,9 @@ class Config():
         return data_sources
 
     def get_data_sources(self):
-        data_sources = []
         backend_sections = self.get_backend_sections()
 
-        for section in self.conf.keys():
-            if section in backend_sections:
-                data_sources.append(section)
-
-        return data_sources
+        return [section for section in self.conf.keys() if section in backend_sections]
 
     @classmethod
     def check_config(cls, config):
@@ -596,21 +583,19 @@ class Config():
                 if param not in check_params[section]:
                     raise RuntimeError("Wrong section param:", section, param)
             for param in check_params[section]:
-                if param not in config[section].keys():
-                    if not check_params[section][param]['optional']:
-                        raise RuntimeError("Missing section param:", section, param)
-                    else:
-                        # Add the default value for this param
-                        config[section][param] = check_params[section][param]['default']
-                else:
+                if param in config[section].keys():
                     ptype = type(config[section][param])
                     ptype_ok = check_params[section][param]["type"]
                     ptype_default = check_params[section][param]["default"]
                     if ptype != ptype_ok and ptype_default is not None:
-                        msg = "Wrong type for section param: %s %s %s should be %s" % \
-                              (section, param, ptype, ptype_ok)
+                        msg = f"Wrong type for section param: {section} {param} {ptype} should be {ptype_ok}"
                         raise RuntimeError(msg)
 
+                elif not check_params[section][param]['optional']:
+                    raise RuntimeError("Missing section param:", section, param)
+                else:
+                    # Add the default value for this param
+                    config[section][param] = check_params[section][param]['default']
         # And now the backend_section entries
         # This only validates the types of each param if present, and doesn't check that
         # all required parameters are set.  This functionality has been moved to the
@@ -623,8 +608,7 @@ class Config():
                         ptype = type(config[section][param])
                         ptype_ok = check_params[param]["type"]
                         if ptype != ptype_ok:
-                            msg = "Wrong type for section param: %s %s %s should be %s" % \
-                                  (section, param, ptype, ptype_ok)
+                            msg = f"Wrong type for section param: {section} {param} {ptype} should be {ptype_ok}"
                             raise RuntimeError(msg)
 
     def get_backend_section(
@@ -668,21 +652,21 @@ class Config():
         This functionality can also be accessed by subscripting a :class:`Config` object.
         For more information, see :func:`__get_item__`
         """
-        base_section: Dict[str, Any] = self.conf.get(base_backend_section, dict())
+        base_section: Dict[str, Any] = self.conf.get(base_backend_section, {})
 
         # Start the output with just the base backend section
-        output = {key: value for key, value in base_section.items()}  # Shallow copy
+        output = dict(base_section)
 
         # Compose all of the parameterized backend sections
         for param in parameters:
-            output.update(
-                self.conf.get(f'{base_backend_section}:{param}', dict())
-            )
+            output.update(self.conf.get(f'{base_backend_section}:{param}', {}))
 
         # Compose the multi-parametered backend section (for backwards compatibility)
         if len(parameters) > 1:
             output.update(
-                self.conf.get(':'.join([base_backend_section] + list(parameters)), dict())
+                self.conf.get(
+                    ':'.join([base_backend_section] + list(parameters)), {}
+                )
             )
 
         # Check that all necessary parameters are present
@@ -731,7 +715,9 @@ class Config():
 
         The passed string must not be empty
         """
-        assert len(backend_string) > 0, "__get_item__ called on a Config object with a zero-length string"
+        assert (
+            backend_string != ""
+        ), "__get_item__ called on a Config object with a zero-length string"
 
         args = backend_string.split(':')
         return self.get_backend_section(*args)
@@ -747,10 +733,7 @@ class Config():
         present in the config.
         """
         out = self[backend_string]
-        if len(out) == 0:
-            return default
-        else:
-            return out
+        return default if len(out) == 0 else out
 
     def __contains__(self, backend_string: str) -> bool:
         """
@@ -780,14 +763,11 @@ class Config():
                 if len(val) > 1 and (val[0] == '"' and val[-1] == '"'):
                     # It is a string
                     typed_conf[s][option] = val[1:-1]
-                # Check list
                 elif len(val) > 1 and (val[0] == '[' and val[-1] == ']'):
                     # List value
                     typed_conf[s][option] = val[1:-1].replace(' ', '').split(',')
-                # Check boolean
                 elif val.lower() in ['true', 'false']:
-                    typed_conf[s][option] = True if val.lower() == 'true' else False
-                # Check None
+                    typed_conf[s][option] = val.lower() == 'true'
                 elif val.lower() == 'none':
                     typed_conf[s][option] = ''
                 else:

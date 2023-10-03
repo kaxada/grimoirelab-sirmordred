@@ -48,10 +48,10 @@ class TestHealthCheck(unittest.TestCase):
         time_b = datetime.strptime('2019-12-31 13:50:52,663', '%Y-%m-%d %H:%M:%S,%f')
         self.assertFalse(match_error_string(file_path, time_a, time_b, match_string))
 
-    def _read_healthcheck_cache_file(name):
+    def _read_healthcheck_cache_file(self):
         """Auxiliary function to read files from ./data used by the tests"""
 
-        file_path = './data/' + name
+        file_path = f'./data/{self}'
         with open(file_path, 'r') as f:
             return f.read()
 

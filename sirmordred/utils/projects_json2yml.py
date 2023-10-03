@@ -33,9 +33,7 @@ def write_yaml(file_name, data):
 
 def open_file(file_name):
     data = open(file_name).read()
-    json_data = json.loads(data)
-
-    return json_data
+    return json.loads(data)
 
 
 def read_arguments():
@@ -47,9 +45,7 @@ def read_arguments():
                         action="store",
                         help="JSON file: input")
 
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def get_hierarchy_list(json_data):

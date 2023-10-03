@@ -205,7 +205,7 @@ class TestConfig(unittest.TestCase):
             }
         }
 
-        self.assertEqual(config.get_backend_section('backend'), dict())
+        self.assertEqual(config.get_backend_section('backend'), {})
         self.assertEqual(config.get_backend_section('backend', 'param1'), {
             'shared_param': 'value 1',
             'unique_to_1': 'value 2',
@@ -266,7 +266,7 @@ class TestConfig(unittest.TestCase):
             }
         }
 
-        self.assertEqual(config['backend'], dict())
+        self.assertEqual(config['backend'], {})
         self.assertEqual(config['backend:param1'], {
             'shared_param': 'value 1',
             'unique_to_1': 'value 2',

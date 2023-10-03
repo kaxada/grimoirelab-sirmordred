@@ -59,9 +59,7 @@ class TestTasksManager(unittest.TestCase):
 
         self.assertTrue(list(self.backends.keys()), 36)
 
-        backends = list(self.backends.keys())
-        backends.sort()
-
+        backends = sorted(self.backends.keys())
         backend = backends[0]
         self.assertEqual(backend, 'askbot')
         self.assertEqual(self.backends[backend], ['https://ask.puppet.com'])

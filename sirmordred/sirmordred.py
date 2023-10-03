@@ -91,7 +91,7 @@ class SirMordred:
             if uri.rfind('@') > 0:
                 pre, post = uri.split('@')
                 char_from = pre.rfind(':')
-                result = uri[0:char_from + 1] + '****@' + post
+                result = f'{uri[:char_from + 1]}****@{post}'
                 return result
             else:
                 return uri
@@ -126,28 +126,21 @@ class SirMordred:
         projects = TaskProjects.get_projects()
 
         for pro in projects:
-            # remove duplicates in backends_section with list(set(..))
-            backend_sections = list(set([sect for sect in projects[pro].keys()
-                                         for backend_section in Config.get_backend_sections()
-                                         if sect and sect.startswith(backend_section)]))
-
-            # sort backends section
-            backend_sections.sort()
+            backend_sections = sorted(
+                {
+                    sect
+                    for sect in projects[pro].keys()
+                    for backend_section in Config.get_backend_sections()
+                    if sect and sect.startswith(backend_section)
+                }
+            )
             for backend_section in backend_sections:
                 if backend_section not in output:
                     output[backend_section] = projects[pro][backend_section]
                 else:
                     output[backend_section] += projects[pro][backend_section]
 
-        # backend could be in project/repo file but not enabled in
-        # sirmordred conf file
-        enabled = {}
-        for k in output:
-            if k in self.conf:
-                enabled[k] = output[k]
-
-        # logger.debug('repos to be retrieved: %s ', enabled)
-        return enabled
+        return {k: output[k] for k in output if k in self.conf}
 
     def execute_tasks(self, tasks_cls):
         """
@@ -189,8 +182,8 @@ class SirMordred:
             return backend_t, global_t
 
         backend_tasks, global_tasks = _split_tasks(tasks_cls)
-        logger.debug('backend_tasks = %s' % (backend_tasks))
-        logger.debug('global_tasks = %s' % (global_tasks))
+        logger.debug(f'backend_tasks = {backend_tasks}')
+        logger.debug(f'global_tasks = {global_tasks}')
 
         threads = []
 
@@ -216,8 +209,9 @@ class SirMordred:
             if big_delay > 0:
                 when = datetime.now() + timedelta(seconds=big_delay)
                 when_str = when.strftime('%a, %d %b %Y %H:%M:%S %Z')
-                logger.info("%s will be executed on %s" % (' '.join([g.__name__ for g in global_tasks]),
-                                                           when_str))
+                logger.info(
+                    f"{' '.join([g.__name__ for g in global_tasks])} will be executed on {when_str}"
+                )
 
         if wait_for_threads:
             time.sleep(1)  # Give enough time create and run all threads
@@ -293,18 +287,16 @@ class SirMordred:
         self.__execute_initial_load()
 
         # Tasks to be executed during updating process
-        all_tasks_cls = []
-        all_tasks_cls.append(TaskProjects)  # projects update is always needed
+        all_tasks_cls = [TaskProjects]
         if self.conf['phases']['collection']:
             all_tasks_cls.append(TaskRawDataCollection)
         if self.conf['phases']['identities']:
-            # load identities and orgs periodically for updates
-            all_tasks_cls.append(TaskIdentitiesLoad)
-            all_tasks_cls.append(TaskIdentitiesMerge)
-            all_tasks_cls.append(TaskIdentitiesExport)
-            # This is done in enrichement before doing the enrich
-            # if self.conf['phases']['collection']:
-            #     all_tasks_cls.append(TaskIdentitiesCollection)
+            all_tasks_cls.extend(
+                (TaskIdentitiesLoad, TaskIdentitiesMerge, TaskIdentitiesExport)
+            )
+                # This is done in enrichement before doing the enrich
+                # if self.conf['phases']['collection']:
+                #     all_tasks_cls.append(TaskIdentitiesCollection)
         if self.conf['phases']['enrichment']:
             all_tasks_cls.append(TaskEnrich)
 

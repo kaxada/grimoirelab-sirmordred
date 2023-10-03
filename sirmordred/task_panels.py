@@ -248,8 +248,7 @@ COLIC_MENU = {
 
 
 def get_sigils_path():
-    sigils_path = panels.__file__.replace('panels/__init__.py', '')
-    return sigils_path
+    return panels.__file__.replace('panels/__init__.py', '')
 
 
 class TaskPanels(Task):
@@ -342,7 +341,7 @@ class TaskPanels(Task):
         kibana_headers["kbn-xsrf"] = "true"
 
         kibana_url = self.conf['panels']['kibiter_url'] + KIBANA_SETTINGS_URL
-        endpoint_url = kibana_url + '/' + endpoint
+        endpoint_url = f'{kibana_url}/{endpoint}'
 
         try:
             res = self.grimoire_con.post(endpoint_url, headers=kibana_headers,
@@ -401,7 +400,7 @@ class TaskPanels(Task):
         es_enrich = self.conf['es_enrichment']['url']
         kibana_url = self.conf['panels']['kibiter_url']
 
-        mboxes_sources = set(['pipermail', 'hyperkitty', 'groupsio', 'nntp'])
+        mboxes_sources = {'pipermail', 'hyperkitty', 'groupsio', 'nntp'}
         if data_sources and any(x in data_sources for x in mboxes_sources):
             data_sources = list(data_sources)
             data_sources.append('mbox')
@@ -683,10 +682,7 @@ class TaskPanelsMenu(Task):
         """Order the dashboard menu"""
 
         # omenu = OrderedDict()
-        omenu = []
-        # Start with Overview
-        omenu.append(self.menu_panels_common['Overview'])
-
+        omenu = [self.menu_panels_common['Overview']]
         # Now the data _getsources
         ds_menu = self.__get_menu_entries(kibiter_major)
 
@@ -696,20 +692,26 @@ class TaskPanelsMenu(Task):
         cocom_menu = None
         colic_menu = None
 
-        found_cocom = [pos for pos, menu in enumerate(ds_menu) if menu['name'] == COCOM_NAME]
-        if found_cocom:
+        if found_cocom := [
+            pos for pos, menu in enumerate(ds_menu) if menu['name'] == COCOM_NAME
+        ]:
             cocom_menu = ds_menu.pop(found_cocom[0])
 
-        found_colic = [pos for pos, menu in enumerate(ds_menu) if menu['name'] == COLIC_NAME]
-        if found_colic:
+        if found_colic := [
+            pos for pos, menu in enumerate(ds_menu) if menu['name'] == COLIC_NAME
+        ]:
             colic_menu = ds_menu.pop(found_colic[0])
 
-        found_kafka = [pos for pos, menu in enumerate(ds_menu) if menu['name'] == KAFKA_NAME]
-        if found_kafka:
+        if found_kafka := [
+            pos for pos, menu in enumerate(ds_menu) if menu['name'] == KAFKA_NAME
+        ]:
             kafka_menu = ds_menu.pop(found_kafka[0])
 
-        found_community = [pos for pos, menu in enumerate(ds_menu) if menu['name'] == COMMUNITY_NAME]
-        if found_community:
+        if found_community := [
+            pos
+            for pos, menu in enumerate(ds_menu)
+            if menu['name'] == COMMUNITY_NAME
+        ]:
             community_menu = ds_menu.pop(found_community[0])
 
         ds_menu.sort(key=operator.itemgetter('name'))
@@ -740,7 +742,7 @@ class TaskPanelsMenu(Task):
     def execute(self):
         kibiter_major = self.es_version(self.conf['es_enrichment']['url'])
 
-        logger.info("Dashboard menu: uploading for %s ..." % kibiter_major)
+        logger.info(f"Dashboard menu: uploading for {kibiter_major} ...")
         # Create the panels menu
         menu = self.__get_dash_menu(kibiter_major, self.conf['panels']['contact'])
         # Remove the current menu and create the new one

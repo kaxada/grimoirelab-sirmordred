@@ -88,10 +88,10 @@ class TestTaskPanels(unittest.TestCase):
 
         config = Config(CONF_FILE)
         es_url = config.conf['es_enrichment']['url']
-        es_kibana_url = urljoin(es_url + "/", '.kibana')
+        es_kibana_url = urljoin(f"{es_url}/", '.kibana')
         kibiter_api_url = urljoin(config.conf['panels']['kibiter_url'], KIBANA_SETTINGS_URL)
-        kibiter_defaultIndex_url = kibiter_api_url + '/defaultIndex'
-        kibiter_timePicker_url = kibiter_api_url + '/timepicker:timeDefaults'
+        kibiter_defaultIndex_url = f'{kibiter_api_url}/defaultIndex'
+        kibiter_timePicker_url = f'{kibiter_api_url}/timepicker:timeDefaults'
 
         headers = {
             "Content-Type": "application/json",
@@ -125,10 +125,10 @@ class TestTaskPanels(unittest.TestCase):
 
         config = Config(CONF_FILE)
         es_url = config.conf['es_enrichment']['url']
-        es_kibana_url = urljoin(es_url + "/", '.kibana')
+        es_kibana_url = urljoin(f"{es_url}/", '.kibana')
         kibiter_api_url = urljoin(config.conf['panels']['kibiter_url'], KIBANA_SETTINGS_URL)
-        kibiter_defaultIndex_url = kibiter_api_url + '/defaultIndex'
-        kibiter_timePicker_url = kibiter_api_url + '/timepicker:timeDefaults'
+        kibiter_defaultIndex_url = f'{kibiter_api_url}/defaultIndex'
+        kibiter_timePicker_url = f'{kibiter_api_url}/timepicker:timeDefaults'
 
         headers = {
             "Content-Type": "application/json",

@@ -60,9 +60,7 @@ class Task():
 
     @staticmethod
     def anonymize_url(url):
-        anonymized = re.sub('://.*@', '://', url)
-
-        return anonymized
+        return re.sub('://.*@', '://', url)
 
     @staticmethod
     def load_aliases_from_json(aliases_json):
@@ -87,12 +85,8 @@ class Task():
         logger.debug("A bored task. It does nothing!")
 
     @classmethod
-    def get_backend(self, backend_section):
-        # To support the same data source with different configs
-        # remo:activitites is like remo but with an extra param
-        # category = activity
-        backend = backend_section.split(":")[0]
-        return backend
+    def get_backend(cls, backend_section):
+        return backend_section.split(":")[0]
 
     def set_backend_section(self, backend_section):
         self.backend_section = backend_section
@@ -119,10 +113,7 @@ class Task():
         connector = get_connector_from_name(backend)
         ocean = connector[1]
 
-        # First add the params from the URL, which is backend specific
-        params = ocean.get_p2o_params_from_url(repo)
-
-        return params
+        return ocean.get_p2o_params_from_url(repo)
 
     def _compose_perceval_params(self, backend_section, repo):
         backend = self.get_backend(backend_section)
@@ -145,15 +136,15 @@ class Task():
 
             # If param is boolean, no values must be added
             if type(section_param) == bool:
-                params.append("--" + p) if section_param else None
+                params.append(f"--{p}") if section_param else None
             elif type(section_param) == list:
                 # '--blacklist-jobs', 'a', 'b', 'c'
                 # 'a', 'b', 'c' must be added as items in the list
-                params.append("--" + p)
+                params.append(f"--{p}")
                 list_params = section_param
                 params += list_params
             else:
-                params.append("--" + p)
+                params.append(f"--{p}")
                 params.append(str(section_param))
 
         return params
@@ -231,7 +222,7 @@ class Task():
             res.raise_for_status()
             major = res.json()['version']['number'].split(".")[0]
         except Exception:
-            logger.error("Error retrieving Elasticsearch version: " + url)
+            logger.error(f"Error retrieving Elasticsearch version: {url}")
             raise
         return major
 

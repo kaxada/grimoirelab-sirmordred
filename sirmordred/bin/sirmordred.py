@@ -51,7 +51,7 @@ def main():
 
     if args.config_template_file is not None:
         Config.create_config_file(args.config_template_file)
-        Logger.info("Sample config file created in {}".format(args.config_template_file))
+        Logger.info(f"Sample config file created in {args.config_template_file}")
         return 0
     elif args.config_files is None:
         Logger.error("Option -t or -c is required")
@@ -64,27 +64,23 @@ def main():
         debug_mode = config_dict['general']['debug']
         logger = setup_logs(logs_dir, debug_mode)
     except RuntimeError as error:
-        print("Error while consuming configuration: {}".format(error))
+        print(f"Error while consuming configuration: {error}")
         return 1
 
     if args.phases:
-        logger.info("Executing sirmordred for phases: {}".format(args.phases))
+        logger.info(f"Executing sirmordred for phases: {args.phases}")
         # HACK: the internal dict of Config is modified directly
         # In manual phases execute sirmordred as an script
         config_dict['general']['update'] = False
         for phase in config_dict['phases']:
-            config_dict['phases'][phase] = True if phase in args.phases else False
+            config_dict['phases'][phase] = phase in args.phases
 
     SirMordred(config).start()
 
 
 def setup_logs(logs_dir, debug_mode):
 
-    if debug_mode:
-        logging_mode = logging.DEBUG
-    else:
-        logging_mode = logging.INFO
-
+    logging_mode = logging.DEBUG if debug_mode else logging.INFO
     logger = logging.getLogger()
     logger.setLevel(logging_mode)
     # create file handler which logs even debug messages
@@ -128,8 +124,7 @@ def parse_args():
     parser.add_argument('-p', '--phases', nargs='*',
                         help='List of phases to execute (update is set to false)')
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 if __name__ == '__main__':

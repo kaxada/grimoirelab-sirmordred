@@ -147,9 +147,7 @@ class TaskIdentitiesLoad(Task):
         def is_remote(filename):
             """ Naive implementation. To be evolved """
             remote = False
-            if 'http' in filename:
-                return True
-            return remote
+            return True if 'http' in filename else remote
 
         def load_identities_file(filename, reset=False):
             """
@@ -199,13 +197,13 @@ class TaskIdentitiesLoad(Task):
                         # repository_type = repository_raw.rsplit("/", 2)[1]
                         repository_branch = repository_raw.rsplit("/", 2)[2]
                         repo_file_sha = \
-                            TaskIdentitiesExport.sha_github_file(config, repo_file,
+                                TaskIdentitiesExport.sha_github_file(config, repo_file,
                                                                  repository_api, repository_branch)
                         if not repo_file_sha:
                             logger.error("Can't find identities file %s. Not loading identities", filename)
                             return
-                        file_url = repository_api + "/git/blobs/" + repo_file_sha
-                        headers = {"Authorization": "token " + api_token}
+                        file_url = f"{repository_api}/git/blobs/{repo_file_sha}"
+                        headers = {"Authorization": f"token {api_token}"}
                         res = requests.get(file_url, headers=headers)
                         res.raise_for_status()
                         with tempfile.NamedTemporaryFile() as temp:
@@ -359,9 +357,9 @@ class TaskIdentitiesExport(Task):
 
         cfg = config.get_conf()
         github_token = cfg['sortinghat']['identities_api_token']
-        headers = {"Authorization": "token " + github_token}
+        headers = {"Authorization": f"token {github_token}"}
 
-        url_dir = repository_api + "/git/trees/" + repository_branch
+        url_dir = f"{repository_api}/git/trees/{repository_branch}"
         logger.debug("Gettting sha data from tree: %s", url_dir)
         raw_repo_file_info = requests.get(url_dir, headers=headers)
         raw_repo_file_info.raise_for_status()
@@ -394,7 +392,7 @@ class TaskIdentitiesExport(Task):
         repo_file_sha = None
         gzipped_identities_file = None
         github_token = cfg['sortinghat']['identities_api_token']
-        headers = {"Authorization": "token " + github_token}
+        headers = {"Authorization": f"token {github_token}"}
 
         repository_url = cfg['sortinghat']['identities_export_url']
         try:
@@ -417,7 +415,7 @@ class TaskIdentitiesExport(Task):
             logger.debug("SH identities exported to tmp file: %s", temp.name)
             # Compress the file with gzip
             with open(temp.name, 'rb') as f_in:
-                gzipped_identities_file = temp.name + '.gz'
+                gzipped_identities_file = f'{temp.name}.gz'
                 with gzip.open(gzipped_identities_file, 'wb') as f_out:
                     shutil.copyfileobj(f_in, f_out)
             # Get sha for the repository_file
@@ -440,7 +438,7 @@ class TaskIdentitiesExport(Task):
                     upload_json["sha"] = repo_file_sha
 
                 data = json.dumps(upload_json)
-                url_put = repository_api + "/contents/" + repo_file
+                url_put = f"{repository_api}/contents/{repo_file}"
                 logger.debug("Uploading to GitHub %s", url_put)
                 upload_res = requests.put(url_put, headers=headers, data=data)
                 upload_res.raise_for_status()
@@ -463,11 +461,9 @@ class TaskIdentitiesMerge(Task):
 
         with self.db.connect() as session:
             query = session.query(Profile).\
-                filter(Profile.name == profile_name)
-            profiles = query.all()
-            if profiles:
-                for p in profiles:
-                    uuids.append(p.uuid)
+                    filter(Profile.name == profile_name)
+            if profiles := query.all():
+                uuids.extend(p.uuid for p in profiles)
         return uuids
 
     def __build_sh_command(self):
@@ -477,10 +473,17 @@ class TaskIdentitiesMerge(Task):
         db_password = cfg['sortinghat']['password']
         db_host = cfg['sortinghat']['host']
         db_name = cfg['sortinghat']['database']
-        cmd = ['sortinghat', '-u', db_user, '-p', db_password, '--host', db_host,
-               '-d', db_name]
-
-        return cmd
+        return [
+            'sortinghat',
+            '-u',
+            db_user,
+            '-p',
+            db_password,
+            '--host',
+            db_host,
+            '-d',
+            db_name,
+        ]
 
     def __execute_sh_command(self, cmd):
         logger.debug("Executing %s", cmd)

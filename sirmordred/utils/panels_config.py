@@ -56,14 +56,11 @@ def get_params():
     """Get params to upload dashboards and menu"""
 
     parser = get_params_parser()
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def get_sigils_path():
-    sigils_path = panels.__file__.replace('panels/__init__.py', '')
-    return sigils_path
+    return panels.__file__.replace('panels/__init__.py', '')
 
 
 def read_file(filename, mode='r'):

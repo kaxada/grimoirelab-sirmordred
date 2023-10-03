@@ -52,12 +52,11 @@ class TaskRawDataCollection(Task):
 
         aliases_file = cfg['general']['aliases_file']
         aliases = self.load_aliases_from_json(aliases_file)
-        if backend_section in aliases:
-            found = aliases[backend_section]['raw']
-        else:
-            found = [self.get_backend(backend_section) + '-raw']
-
-        return found
+        return (
+            aliases[backend_section]['raw']
+            if backend_section in aliases
+            else [f'{self.get_backend(backend_section)}-raw']
+        )
 
     def execute(self):
 
@@ -76,13 +75,13 @@ class TaskRawDataCollection(Task):
 
         t2 = time.time()
         logger.info('[%s] collection phase starts', self.backend_section)
-        print("Collection for {}: starting...".format(self.backend_section))
+        print(f"Collection for {self.backend_section}: starting...")
         clean = False
 
-        fetch_archive = False
-        if 'fetch-archive' in cfg[self.backend_section] and cfg[self.backend_section]['fetch-archive']:
-            fetch_archive = True
-
+        fetch_archive = bool(
+            'fetch-archive' in cfg[self.backend_section]
+            and cfg[self.backend_section]['fetch-archive']
+        )
         anonymize = 'anonymize' in cfg[self.backend_section] and cfg[self.backend_section]['anonymize']
 
         # repos could change between executions because changes in projects
@@ -98,9 +97,7 @@ class TaskRawDataCollection(Task):
             repo, repo_labels = self._extract_repo_tags(self.backend_section, repo)
             p2o_args = self._compose_p2o_params(self.backend_section, repo)
             filter_raw = p2o_args.get('filter-raw', None)
-            no_collection = p2o_args.get('filter-no-collection', None)
-
-            if no_collection:
+            if no_collection := p2o_args.get('filter-no-collection', None):
                 # If no-collection is set to true, the repository data is not collected.
                 logging.warning("Not collecting archive repository: %s", repo)
                 continue
@@ -136,18 +133,20 @@ class TaskRawDataCollection(Task):
 
                 errors.append(error)
             except Exception:
-                logger.error("Something went wrong collecting data from this %s repo: %s . "
-                             "Using the backend_args: %s " % (ds, url, str(backend_args)))
+                logger.error(
+                    f"Something went wrong collecting data from this {ds} repo: {url} . Using the backend_args: {str(backend_args)} "
+                )
                 traceback.print_exc()
-                raise DataCollectionError('Failed to collect data from %s' % url)
+                raise DataCollectionError(f'Failed to collect data from {url}')
             logger.info('[%s] collection finished for %s', self.backend_section, self.anonymize_url(repo))
 
         t3 = time.time()
         spent_time = time.strftime("%H:%M:%S", time.gmtime(t3 - t2))
         logger.info('[%s] collection phase finished in %s',
                     self.backend_section, spent_time)
-        print("Collection for {}: finished after {} hours".format(self.backend_section,
-                                                                  spent_time))
+        print(
+            f"Collection for {self.backend_section}: finished after {spent_time} hours"
+        )
 
         self.retain_data(cfg['general']['retention_time'],
                          self.conf['es_collection']['url'],

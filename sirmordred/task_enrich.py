@@ -76,30 +76,26 @@ class TaskEnrich(Task):
 
         aliases_file = cfg['general']['aliases_file']
         aliases = self.load_aliases_from_json(aliases_file)
-        if backend_section in aliases:
-            found = aliases[backend_section]['enrich']
-        else:
-            found = [self.get_backend(backend_section)]
-
-        return found
+        return (
+            aliases[backend_section]['enrich']
+            if backend_section in aliases
+            else [self.get_backend(backend_section)]
+        )
 
     def __update_last_autorefresh(self, days=None):
-        if not days:
-            return datetime.utcnow()
-        else:
-            return datetime.utcnow() - timedelta(days=days)
+        return datetime.utcnow() - timedelta(days=days) if days else datetime.utcnow()
 
     def __load_studies(self):
         studies = [study for study in self.conf[self.backend_section]['studies'] if study.strip() != ""]
         if not studies:
-            logger.debug('No studies for %s' % self.backend_section)
+            logger.debug(f'No studies for {self.backend_section}')
             return None
 
         studies_args = []
 
         for study in studies:
             if study not in self.conf:
-                msg = 'Missing config for study %s:' % study
+                msg = f'Missing config for study {study}:'
                 logger.error(msg)
                 raise DataEnrichmentError(msg)
 
@@ -168,7 +164,7 @@ class TaskEnrich(Task):
 
             backend = self.get_backend(self.backend_section)
             if 'studies' in self.conf[self.backend_section] and \
-                    self.conf[self.backend_section]['studies']:
+                        self.conf[self.backend_section]['studies']:
                 studies_args = self.__load_studies()
 
             logger.info('[%s] enrichment starts for %s', self.backend_section, self.anonymize_url(repo))
@@ -211,7 +207,9 @@ class TaskEnrich(Task):
                 logger.error("Something went wrong producing enriched data for %s . "
                              "Using the backend_args: %s ", self.backend_section, str(backend_args))
                 logger.error("Exception: %s", ex)
-                raise DataEnrichmentError('Failed to produce enriched data for ' + self.backend_section)
+                raise DataEnrichmentError(
+                    f'Failed to produce enriched data for {self.backend_section}'
+                )
 
             logger.info('[%s] enrichment finished for %s', self.backend_section, self.anonymize_url(repo))
 
@@ -222,21 +220,10 @@ class TaskEnrich(Task):
         # Refresh projects
         field_id = enrich_backend.get_field_unique_id()
 
-        if False:
-            # TODO: Waiting that the project info is loaded from yaml files
-            logger.info("Refreshing project field in enriched index")
-            field_id = enrich_backend.get_field_unique_id()
-            eitems = refresh_projects(enrich_backend)
-            enrich_backend.elastic.bulk_upload(eitems, field_id)
-
         # Refresh identities
         logger.info("[%s] Refreshing identities", self.backend_section)
 
-        if studies:
-            after = self.last_autorefresh_studies
-        else:
-            after = self.last_autorefresh
-
+        after = self.last_autorefresh_studies if studies else self.last_autorefresh
         # As we are going to recover modified indentities just below, store this time
         # to make sure next iteration we are not loosing any modification, but don't
         # update corresponding field with this below until we make sure the update
@@ -310,10 +297,10 @@ class TaskEnrich(Task):
 
     def __studies(self, retention_time):
         """ Execute the studies configured for the current backend """
-        log_prefix = "[" + self.backend_section + "]"
+        log_prefix = f"[{self.backend_section}]"
         cfg = self.config.get_conf()
         if 'studies' not in cfg[self.backend_section] or not \
-           cfg[self.backend_section]['studies']:
+               cfg[self.backend_section]['studies']:
             logger.info('%s no studies phase', log_prefix)
             return
 
@@ -327,7 +314,6 @@ class TaskEnrich(Task):
         enrich_backend = self._get_enrich_backend()
         ocean_backend = self._get_ocean_backend(enrich_backend)
 
-        active_studies = []
         all_studies = enrich_backend.studies
         all_studies_names = [study.__name__ for study in enrich_backend.studies]
 
@@ -339,18 +325,22 @@ class TaskEnrich(Task):
             logger.error('%s Wrong studies names: %s', log_prefix, studies)
             raise RuntimeError('Wrong studies names ', self.backend_section, studies)
 
-        for study in enrich_backend.studies:
-            if study.__name__ in cfg_studies_types:
-                active_studies.append(study)
-
+        active_studies = [
+            study
+            for study in enrich_backend.studies
+            if study.__name__ in cfg_studies_types
+        ]
         enrich_backend.studies = active_studies
-        logger.info("%s Executing studies %s" % (log_prefix, [study for study in studies]))
+        logger.info(f"{log_prefix} Executing studies {list(studies)}")
 
         studies_args = self.__load_studies()
         study_aliases = self.select_aliases(cfg, "studies_aliases")
         for study_arg in studies_args:
-            alias = [study_alias['alias'] for study_alias in study_aliases if study_arg['type'] == study_alias['name']]
-            if alias:
+            if alias := [
+                study_alias['alias']
+                for study_alias in study_aliases
+                if study_arg['type'] == study_alias['name']
+            ]:
                 study_arg['params']['alias'] = alias[0]
 
         do_studies(ocean_backend, enrich_backend, studies_args, retention_time=retention_time)

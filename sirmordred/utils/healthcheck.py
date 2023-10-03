@@ -46,7 +46,7 @@ def main():
     if healthy and (time_a is not None):
         # We discard to search if the cache file is not created, this way the container
         #  won't have to worry about old logs
-        file_path = logs_dir + '/all.log'
+        file_path = f'{logs_dir}/all.log'
         error_found = match_error_string(file_path, time_a, time_b, match_string)
         healthy = not error_found
 
@@ -114,7 +114,7 @@ def match_error_string(file_path, time_a, time_b, match_string):
                 continue
 
             columns = line.split(' ')
-            str_date = columns[0] + ' ' + columns[1]
+            str_date = f'{columns[0]} {columns[1]}'
             dt_line = datetime.strptime(str_date, HEALTHCHECK_DATEFORMAT)
             if dt_line < time_a or dt_line > time_b:
                 break
@@ -132,8 +132,7 @@ def write_cache_file(is_healthy, time):
     :param time: datetime
     """
 
-    cache_content = {}
-    cache_content['time'] = time.strftime(HEALTHCHECK_DATEFORMAT)
+    cache_content = {'time': time.strftime(HEALTHCHECK_DATEFORMAT)}
     cache_content['healthy'] = is_healthy
 
     with open(HEALTHCHECK_CACHEFILE, 'w+') as f:
